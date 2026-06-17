@@ -1,0 +1,32 @@
+@import url("https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/7.4.47/css/materialdesignicons.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Oxanium:wght@200..800&display=swap");
+@import "tailwindcss";
+@plugin './hero.ts';
+@custom-variant dark (&:is(.dark *));
+@config "../tailwind.config.js";
+
+@theme {
+  ----default-font-family: "Inter", sans-serif;
+  --font-sans: "Inter", sans-serif;
+  --color-primary: #d64000;
+  --color-secondary: #0a77d6;
+  --color-tertiary: #0e4678;
+  --color-tertiary-lighten-1: #e5f2ff;
+  --color-tertiary-lighten-2: #e9f0f7;
+  --color-tertiary-lighten-3: #fbfdff;
+  --color-tertiary-lighten-4: #f0f6fc;
+  --color-black: #142535;
+  --color-gray: #4c6177;
+  --color-grey-lighten-1: #94a9c3;
+  --color-grey-lighten-2: #c4d2e4;
+  --color-grey-lighten-3: #f4f6f8;
+  --radius-medium: 4px !important;
+  --color-disable: #f2f6fa;
+  --color-white: #fff;
+  --color-info: #0055b6;
+  --color-secondary-lighten-1: #e5f2ff;
+  --color-secondary-lighten-2: #79b3e5;
+}
+body {
+  @apply overflow-x-hidden;
+}
