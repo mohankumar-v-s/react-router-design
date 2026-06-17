@@ -3,34 +3,13 @@
 
 import { useState, useCallback, useRef } from "react";
 import {
-    MantineReactTable,
-    useMantineReactTable,
-    type MRT_ColumnDef,
-    type MRT_PaginationState,
-} from "mantine-react-table";
-import {
-    TextInput,
-    Button,
-    Group,
-    Badge,
-    Stack,
-    Text,
-    Paper,
-    ActionIcon,
-    Tooltip,
-    Box,
-    Divider,
-    Loader,
-    Center,
-    Title,
-} from "@mantine/core";
-import {
-    Drawer,
-    DrawerBody,
-    DrawerContent,
-    DrawerHeader,
-    Button as HeroButton,
-} from "@heroui/react";
+    useReactTable,
+    getCoreRowModel,
+    flexRender,
+    type ColumnDef,
+    type PaginationState,
+} from "@tanstack/react-table";
+import { Button, Input, Tooltip, Chip, Drawer, DrawerContent, DrawerHeader, DrawerBody } from "@heroui/react";
 import {
     IconSearch,
     IconBuildingCommunity,
@@ -117,6 +96,26 @@ async function fetchOrgDetail(ein: string): Promise<OrgDetail> {
 
 // ─── Detail Drawer ───────────────────────────────────────────────────────────
 
+function DetailRow({
+    label,
+    value,
+}: {
+    label: string;
+    value?: string | null;
+}) {
+    if (!value) return null;
+    return (
+        <div className="flex items-center justify-between py-1.5" style={{ borderBottom: "1px solid #f3f4f6" }}>
+            <span className="text-xs font-semibold text-gray-400 uppercase" style={{ letterSpacing: "0.05em" }}>
+                {label}
+            </span>
+            <span className="text-sm font-medium text-right" style={{ maxWidth: "60%" }}>
+                {value}
+            </span>
+        </div>
+    );
+}
+
 function DetailDrawer({
     isOpen,
     onClose,
@@ -153,28 +152,6 @@ function DetailDrawer({
             .finally(() => setLoading(false));
     }
 
-    const DetailRow = ({
-        label,
-        value,
-    }: {
-        label: string;
-        value?: string | null;
-    }) => {
-        if (!value) return null;
-        return (
-            <Group 
-            // justify="space-between" 
-            py={6} style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}>
-                <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {label}
-                </Text>
-                <Text size="sm" fw={500} ta="right" style={{ maxWidth: "60%" }}>
-                    {value}
-                </Text>
-            </Group>
-        );
-    };
-
     return (
         <Drawer
             isOpen={isOpen}
@@ -190,23 +167,13 @@ function DetailDrawer({
             <DrawerContent>
                 {/* Header */}
                 <DrawerHeader className="flex flex-col gap-1 px-5 py-4">
-                    <Group 
-                    // justify="space-between" 
-                    align="flex-start">
-                        <Stack 
-                        // gap={2} 
-                        style={{ flex: 1, minWidth: 0 }}>
-                            <Text
-                                size="xs"
-                                c="dimmed"
-                                fw={700}
-                                style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
-                            >
+                    <div className="flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-400 uppercase" style={{ letterSpacing: "0.08em" }}>
                                 Organization Details
-                            </Text>
-                            <Text
-                                fw={700}
-                                size="md"
+                            </p>
+                            <p
+                                className="font-bold text-base mt-1"
                                 style={{
                                     lineHeight: 1.3,
                                     overflow: "hidden",
@@ -217,115 +184,103 @@ function DetailDrawer({
                                 }}
                             >
                                 {currentName}
-                            </Text>
+                            </p>
                             {ein && (
-                                <Badge
-                                    color="blue"
-                                    variant="light"
-                                    size="sm"
-                                    leftSection={<IconId size={10} />}
-                                >
-                                    EIN: {ein}
-                                </Badge>
+                                <div className="mt-2">
+                                    <Chip size="sm" color="primary" variant="light" startContent={<IconId size={10} />}>
+                                        EIN: {ein}
+                                    </Chip>
+                                </div>
                             )}
-                        </Stack>
-                        <ActionIcon variant="subtle" color="gray" onClick={onClose} size="sm">
+                        </div>
+                        <Button isIconOnly variant="ghost" size="sm" onPress={onClose}>
                             <IconX size={16} />
-                        </ActionIcon>
-                    </Group>
+                        </Button>
+                    </div>
 
                     {/* Prev / Next */}
-                    <Group mt={10} 
-                    // gap={8}
-                    >
-                        <Tooltip label="Previous organization">
-                            <ActionIcon
-                                variant="default"
-                                disabled={!hasPrev}
-                                onClick={onPrev}
+                    <div className="flex items-center gap-2 mt-2.5">
+                        <Tooltip content="Previous organization">
+                            <Button
+                                isIconOnly
+                                variant="bordered"
                                 size="sm"
+                                isDisabled={!hasPrev}
+                                onPress={onPrev}
                             >
                                 <IconChevronLeft size={14} />
-                            </ActionIcon>
+                            </Button>
                         </Tooltip>
-                        <Tooltip label="Next organization">
-                            <ActionIcon
-                                variant="default"
-                                disabled={!hasNext}
-                                onClick={onNext}
+                        <Tooltip content="Next organization">
+                            <Button
+                                isIconOnly
+                                variant="bordered"
                                 size="sm"
+                                isDisabled={!hasNext}
+                                onPress={onNext}
                             >
                                 <IconChevronRight size={14} />
-                            </ActionIcon>
+                            </Button>
                         </Tooltip>
-                    </Group>
+                    </div>
                 </DrawerHeader>
 
                 {/* Body */}
                 <DrawerBody>
-                    <Box px={20} py={16}>
+                    <div className="px-5 py-4">
                         {loading && (
-                            <Center h={200}>
-                                <Stack align="center">
-                                    <Loader size="sm" color="blue" />
-                                    <Text size="xs" c="dimmed">Loading details…</Text>
-                                </Stack>
-                            </Center>
+                            <div className="flex items-center justify-center h-[200px]">
+                                <div className="flex flex-col items-center gap-2">
+                                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                                    <span className="text-xs text-gray-400">Loading details…</span>
+                                </div>
+                            </div>
                         )}
 
                         {error && (
-                            <Paper p="md" radius="md" bg="red.0" withBorder>
-                                <Text size="sm" c="red.7">
+                            <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                                <p className="text-sm text-red-600">
                                     Failed to load: {error}
-                                </Text>
-                            </Paper>
+                                </p>
+                            </div>
                         )}
 
                         {detail && !loading && (
-                            <Stack>
+                            <div className="flex flex-col gap-0">
                                 {/* Identity */}
-                                <Text
-                                    size="xs"
-                                    fw={700}
-                                    c="blue.6"
-                                    mb={6}
-                                    style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                                <p
+                                    className="text-xs font-bold text-blue-600 mb-1.5 uppercase"
+                                    style={{ letterSpacing: "0.08em" }}
                                 >
                                     Identity
-                                </Text>
+                                </p>
                                 <DetailRow label="Legal Name" value={detail.legalName} />
                                 <DetailRow label="DBA Name" value={detail.dbaName} />
                                 <DetailRow label="Sort Name" value={detail.sortName} />
                                 <DetailRow label="EIN" value={detail.ein} />
 
-                                <Divider my={14} />
+                                <hr className="my-3.5 border-gray-200" />
 
                                 {/* Location */}
-                                <Text
-                                    size="xs"
-                                    fw={700}
-                                    c="blue.6"
-                                    mb={6}
-                                    style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                                <p
+                                    className="text-xs font-bold text-blue-600 mb-1.5 uppercase"
+                                    style={{ letterSpacing: "0.08em" }}
                                 >
                                     Location
-                                </Text>
+                                </p>
                                 <DetailRow label="City" value={detail.city} />
                                 <DetailRow label="State" value={detail.state} />
                                 <DetailRow label="Country" value={detail.country} />
 
-                                <Divider my={14} />
+                                <hr className="my-3.5 border-gray-200" />
 
                                 {/* Classification */}
-                                <Text
-                                    size="xs"
-                                    fw={700}
-                                    c="blue.6"
-                                    mb={6}
-                                    style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                                <p
+                                    className="text-xs font-bold text-blue-600 mb-1.5 uppercase"
+                                    style={{ letterSpacing: "0.08em" }}
                                 >
                                     Classification
-                                </Text>
+                                </p>
                                 <DetailRow label="Subsection" value={detail.subsection} />
                                 <DetailRow label="Classification" value={detail.classification} />
                                 <DetailRow label="Foundation" value={detail.foundation} />
@@ -335,18 +290,15 @@ function DetailDrawer({
                                 <DetailRow label="Activity" value={detail.activity} />
                                 <DetailRow label="Organization" value={detail.organization} />
 
-                                <Divider my={14} />
+                                <hr className="my-3.5 border-gray-200" />
 
                                 {/* Financials */}
-                                <Text
-                                    size="xs"
-                                    fw={700}
-                                    c="blue.6"
-                                    mb={6}
-                                    style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                                <p
+                                    className="text-xs font-bold text-blue-600 mb-1.5 uppercase"
+                                    style={{ letterSpacing: "0.08em" }}
                                 >
                                     Financials
-                                </Text>
+                                </p>
                                 <DetailRow label="Tax Period" value={detail.taxPeriod} />
                                 <DetailRow label="Asset Amount" value={detail.assetAmt} />
                                 <DetailRow label="Income Amount" value={detail.incomeAmt} />
@@ -357,9 +309,9 @@ function DetailDrawer({
                                 <DetailRow label="Account Period" value={detail.acctPd} />
                                 <DetailRow label="Filing Req Code" value={detail.filingReqCd} />
                                 <DetailRow label="PF Filing Req" value={detail.pfFilingReqCd} />
-                            </Stack>
+                            </div>
                         )}
-                    </Box>
+                    </div>
                 </DrawerBody>
             </DrawerContent>
         </Drawer>
@@ -378,7 +330,7 @@ export default function OrganizationSearch() {
     const [hasSearched, setHasSearched] = useState(false);
 
     // Pagination — page is 0-indexed for API
-    const [pagination, setPagination] = useState<MRT_PaginationState>({
+    const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
         pageSize: 25,
     });
@@ -424,7 +376,7 @@ export default function OrganizationSearch() {
 
     // When pagination changes (user clicks next/prev page in table)
     const handlePaginationChange = (
-        updater: MRT_PaginationState | ((prev: MRT_PaginationState) => MRT_PaginationState)
+        updater: PaginationState | ((prev: PaginationState) => PaginationState)
     ) => {
         const next = typeof updater === "function" ? updater(pagination) : updater;
         setPagination(next);
@@ -508,60 +460,60 @@ export default function OrganizationSearch() {
 
     // ── Columns ──────────────────────────────────────────────────────────────
 
-    const columns: MRT_ColumnDef<OrgItem>[] = [
+    const columns: ColumnDef<OrgItem>[] = [
         {
             accessorKey: "name",
             header: "Organization Name",
             size: 300,
-            Cell: ({ cell }) => (
-                <Text fw={600} size="sm" style={{ lineHeight: 1.4 }}>
-                    {cell.getValue<string>()}
-                </Text>
+            cell: (info) => (
+                <span className="text-sm font-semibold leading-snug">
+                    {info.getValue<string>()}
+                </span>
             ),
         },
         {
             accessorKey: "ein",
             header: "EIN",
             size: 130,
-            Cell: ({ cell }) => (
-                <Text size="sm" ff="monospace" c="dimmed">
-                    {cell.getValue<string>()}
-                </Text>
+            cell: (info) => (
+                <span className="text-sm font-mono text-gray-400">
+                    {info.getValue<string>()}
+                </span>
             ),
         },
         {
             accessorKey: "city",
             header: "City",
             size: 140,
-            Cell: ({ cell, row }) => (
-                <Group>
-                    <IconMapPin size={12} color="gray" />
-                    <Text size="sm">
-                        {cell.getValue<string>()}, {row.original.state}
-                    </Text>
-                </Group>
+            cell: (info) => (
+                <div className="flex items-center gap-1.5">
+                    <IconMapPin size={12} className="text-gray-400" />
+                    <span className="text-sm">
+                        {info.getValue<string>()}, {info.row.original.state}
+                    </span>
+                </div>
             ),
         },
         {
             accessorKey: "types",
             header: "Types",
             size: 200,
-            Cell: ({ cell }) => {
-                const types = cell.getValue<string>()?.split(",").map((t) => t.trim()) ?? [];
+            cell: (info) => {
+                const types = info.getValue<string>()?.split(",").map((t) => t.trim()) ?? [];
                 return (
-                    <Group>
+                    <div className="flex flex-wrap gap-1">
                         {types.map((t) => (
-                            <Badge
+                            <Chip
                                 key={t}
-                                size="xs"
+                                size="sm"
+                                color={t === "REVOCATION" ? "danger" : t === "EPOSTCARD" ? "primary" : "default"}
                                 variant="light"
-                                color={t === "REVOCATION" ? "red" : t === "EPOSTCARD" ? "blue" : "gray"}
-                                leftSection={<IconTag size={8} />}
+                                startContent={<IconTag size={8} />}
                             >
                                 {t}
-                            </Badge>
+                            </Chip>
                         ))}
-                    </Group>
+                    </div>
                 );
             },
         },
@@ -570,15 +522,15 @@ export default function OrganizationSearch() {
             header: "Actions",
             size: 120,
             enableSorting: false,
-            enableColumnFilter: false,
-            Cell: ({ row }) => (
+            enableHiding: false,
+            cell: (info) => (
                 <Button
-                    size="xs"
+                    size="sm"
                     variant="light"
-                    color="blue"
-                    leftSection={<IconBuildingCommunity size={13} />}
-                    onClick={() => openDrawer(row.index)}
-                    style={{ fontWeight: 600 }}
+                    color="primary"
+                    startContent={<IconBuildingCommunity size={13} />}
+                    onPress={() => openDrawer(info.row.index)}
+                    className="font-semibold"
                 >
                     View Details
                 </Button>
@@ -588,124 +540,78 @@ export default function OrganizationSearch() {
 
     // ── Table ─────────────────────────────────────────────────────────────────
 
-    const table = useMantineReactTable({
+    const table = useReactTable({
         columns,
         data,
-        rowCount: totalCount,
+        pageCount: Math.ceil(totalCount / pagination.pageSize),
         state: {
             pagination,
-            isLoading: loading,
-            showAlertBanner: !!error,
         },
-        manualPagination: true,
         onPaginationChange: handlePaginationChange,
-        enableGlobalFilter: false,
-        enableColumnFilters: false,
+        manualPagination: true,
+        getCoreRowModel: getCoreRowModel(),
         enableSorting: false,
-        enableTopToolbar: false,
-        enableBottomToolbar: true,
-        paginationDisplayMode: "pages",
-        mantinePaginationProps: {
-            rowsPerPageOptions: ["10", "25", "50"],
-            showRowsPerPage: true,
-        },
-        mantineTableProps: {
-            striped: true,
-            highlightOnHover: true,
-            // withTableBorder: false,
-            withColumnBorders: false,
-        },
-        mantineTableBodyRowProps: {
-            style: { cursor: "default" },
-        },
-        renderEmptyRowsFallback: () => (
-            <Center h={200}>
-                {hasSearched ? (
-                    <Stack align="center">
-                        <IconBuildingCommunity size={32} color="gray" />
-                        <Text c="dimmed" size="sm">No organizations found</Text>
-                    </Stack>
-                ) : (
-                    <Stack align="center">
-                        <IconSearch size={32} color="gray" />
-                        <Text c="dimmed" size="sm">Search for organizations above</Text>
-                    </Stack>
-                )}
-            </Center>
-        ),
+        enableFilters: false,
     });
+
+    const rows = table.getRowModel().rows;
 
     // ── Render ────────────────────────────────────────────────────────────────
 
     return (
-        <Box
+        <div
+            className="min-h-screen"
             style={{
-                minHeight: "100vh",
                 background: "linear-gradient(135deg, #f8fafc 0%, #f0f4ff 100%)",
                 fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
             }}
         >
-            <Box
-                px={{ base: 16, sm: 32, lg: 48 }}
-                py={32}
-                style={{ maxWidth: 1400, margin: "0 auto" }}
-            >
+            <div className="px-4 sm:px-8 lg:px-12 py-8" style={{ maxWidth: 1400, margin: "0 auto" }}>
                 {/* Page Header */}
-                <Stack mb={28}>
-                    <Group>
-                        <Box
-                            p={8}
+                <div className="mb-7">
+                    <div className="flex items-center gap-3">
+                        <div
+                            className="p-2 flex items-center justify-center"
                             style={{
                                 background: "linear-gradient(135deg, #3b82f6, #6366f1)",
                                 borderRadius: 10,
-                                display: "flex",
-                                alignItems: "center",
                             }}
                         >
-                            <IconBuildingCommunity size={20} color="white" />
-                        </Box>
-                        <Title order={2} fw={800} style={{ letterSpacing: "-0.02em" }}>
+                            <IconBuildingCommunity size={20} className="text-white" />
+                        </div>
+                        <h2 className="text-2xl font-extrabold tracking-tight">
                             Organization Search
-                        </Title>
-                    </Group>
-                    <Text c="dimmed" size="sm" ml={46}>
+                        </h2>
+                    </div>
+                    <p className="text-sm text-gray-400 ml-[46px]">
                         Search IRS tax-exempt organizations by name
-                    </Text>
-                </Stack>
+                    </p>
+                </div>
 
                 {/* Search Bar */}
-                <Paper
-                    shadow="xs"
-                    radius="lg"
-                    p="md"
-                    mb={20}
-                    style={{ border: "1px solid #e8ecf4" }}
+                <div
+                    className="rounded-xl p-4 mb-5"
+                    style={{ border: "1px solid #e8ecf4", background: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
                 >
-                    <Group>
-                        <TextInput
+                    <div className="flex items-center gap-3">
+                        <Input
                             placeholder="Search organization name… (press Enter)"
-                            // leftSection={<IconSearch size={16} color="#94a3b8" />}
                             value={inputValue}
-                            onChange={(e) => setInputValue(e.currentTarget.value)}
+                            onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            style={{ flex: 1 }}
-                            size="md"
-                            radius="md"
-                            styles={{
-                                input: {
-                                    border: "1.5px solid #e2e8f0",
-                                    fontWeight: 500,
-                                    "&:focus": { borderColor: "#3b82f6" },
-                                },
+                            className="flex-1"
+                            size="lg"
+                            classNames={{
+                                inputWrapper: "border border-gray-200 rounded-lg font-medium focus-within:border-blue-500",
                             }}
                         />
                         <Button
-                            size="md"
-                            radius="md"
-                            onClick={handleSearch}
-                            loading={loading}
-                            disabled={!inputValue.trim()}
-                            leftSection={<IconSearch size={15} />}
+                            size="lg"
+                            radius="lg"
+                            onPress={handleSearch}
+                            isLoading={loading}
+                            isDisabled={!inputValue.trim()}
+                            startContent={!loading ? <IconSearch size={15} /> : undefined}
                             style={{
                                 background: "linear-gradient(135deg, #3b82f6, #6366f1)",
                                 fontWeight: 700,
@@ -714,34 +620,155 @@ export default function OrganizationSearch() {
                         >
                             Search
                         </Button>
-                    </Group>
+                    </div>
                     {hasSearched && !loading && (
-                        <Text size="xs" c="dimmed" mt={8} ml={4}>
+                        <p className="text-xs text-gray-400 mt-2 ml-1">
                             {totalCount > 0
                                 ? `${totalCount.toLocaleString()} organizations found for "${query}"`
                                 : `No results for "${query}"`}
-                        </Text>
+                        </p>
                     )}
-                </Paper>
+                </div>
 
                 {/* Error */}
                 {error && (
-                    <Paper p="md" radius="md" mb={16} bg="red.0" withBorder>
-                        <Text size="sm" c="red.7" fw={500}>
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 mb-4">
+                        <p className="text-sm text-red-600 font-medium">
                             ⚠ {error}
-                        </Text>
-                    </Paper>
+                        </p>
+                    </div>
                 )}
 
                 {/* Table */}
-                <Paper
-                    shadow="xs"
-                    radius="lg"
-                    style={{ border: "1px solid #e8ecf4", overflow: "hidden" }}
+                <div
+                    className="rounded-xl overflow-hidden"
+                    style={{ border: "1px solid #e8ecf4", background: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
                 >
-                    <MantineReactTable table={table} />
-                </Paper>
-            </Box>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                            <thead className="bg-gray-50">
+                                {table.getHeaderGroups().map((headerGroup) => (
+                                    <tr key={headerGroup.id}>
+                                        {headerGroup.headers.map((header) => (
+                                            <th
+                                                key={header.id}
+                                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                                style={{ width: header.getSize() }}
+                                            >
+                                                {header.isPlaceholder
+                                                    ? null
+                                                    : flexRender(
+                                                          header.column.columnDef.header,
+                                                          header.getContext()
+                                                      )}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {loading ? (
+                                    <tr>
+                                        <td
+                                            colSpan={columns.length}
+                                            className="px-4 py-12 text-center text-sm text-gray-500"
+                                        >
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                                                Loading...
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : rows.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={columns.length}
+                                            className="px-4 py-12 text-center text-sm text-gray-500"
+                                        >
+                                            <div className="flex flex-col items-center gap-2">
+                                                {hasSearched ? (
+                                                    <>
+                                                        <IconBuildingCommunity size={32} className="text-gray-300" />
+                                                        <span>No organizations found</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <IconSearch size={32} className="text-gray-300" />
+                                                        <span>Search for organizations above</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    rows.map((row, idx) => (
+                                        <tr
+                                            key={row.id}
+                                            className={`transition-colors hover:bg-gray-50 ${idx % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                                        >
+                                            {row.getVisibleCells().map((cell) => (
+                                                <td
+                                                    key={cell.id}
+                                                    className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap"
+                                                >
+                                                    {flexRender(
+                                                        cell.column.columnDef.cell,
+                                                        cell.getContext()
+                                                    )}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination */}
+                    {hasSearched && (
+                        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500">Rows per page:</span>
+                                <select
+                                    value={table.getState().pagination.pageSize}
+                                    onChange={(e) => {
+                                        table.setPageSize(Number(e.target.value));
+                                    }}
+                                    className="rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                >
+                                    {[10, 25, 50].map((pageSize) => (
+                                        <option key={pageSize} value={pageSize}>
+                                            {pageSize}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <span className="text-sm text-gray-500">
+                                Page {table.getState().pagination.pageIndex + 1} of{' '}
+                                {table.getPageCount()}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="bordered"
+                                    isDisabled={!table.getCanPreviousPage()}
+                                    onPress={() => table.previousPage()}
+                                >
+                                    <IconChevronLeft size={16} />
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="bordered"
+                                    isDisabled={!table.getCanNextPage()}
+                                    onPress={() => table.nextPage()}
+                                >
+                                    <IconChevronRight size={16} />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {/* Detail Drawer */}
             <DetailDrawer
@@ -754,6 +781,6 @@ export default function OrganizationSearch() {
                 hasPrev={hasPrev}
                 hasNext={hasNext}
             />
-        </Box>
+        </div>
     );
 }
